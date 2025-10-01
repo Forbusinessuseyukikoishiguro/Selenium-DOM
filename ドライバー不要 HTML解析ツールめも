@@ -1,0 +1,1015 @@
+# ドライバー不要 HTML解析ツール
+# BeautifulSoup + requests でスクレイピング
+# Seleniumドライバー不要で軽量・高速
+# ================================
+
+## 📚 完成したツール3つ
+
+### 1️⃣ **ハイブリッドツール** (`hybrid_scraping_tool.py`)
+✅ 全ての行にコメント追加完了
+- Selenium + BeautifulSoupの組み合わせ
+- 自動判定機能付き
+- データ抽出→CSV/JSON保存
+
+### 2️⃣ **ドライバー不要ツール** (`html_parser_no_driver.py`)
+✅ 全ての行にコメント追加完了
+- requests + BeautifulSoupのみ
+- 超軽量・高速
+- インタラクティブモード搭載
+
+### 3️⃣ **基本ツール** (`selenium_scraping_tool.py`)
+- 最初に作成したSeleniumベースツール
+- HTML/DOM構造の自動分析
+
+---
+
+## 💡 コメントの読み方
+
+### レベル1: 初心者向け
+```python
+self.headers = {}  # HTTPヘッダーを辞書で定義
+```
+→ **何をしているか**を理解
+
+### レベル2: 中級者向け
+```python
+# User-Agent: ブラウザを偽装（ボット検出を回避）
+```
+→ **なぜそうするか**を理解
+
+### レベル3: 上級者向け
+```python
+# エンコーディング設定（文字化け対策）
+if response.encoding == 'ISO-8859-1':
+    response.encoding = response.apparent_encoding
+```
+→ **問題と解決方法**を理解
+
+---
+
+## 🎓 学習の進め方
+
+### ステップ1: コードを読む
+1. `main()`関数から読み始める
+2. 1行ずつコメントと照らし合わせる
+3. わからない部分をメモ
+
+### ステップ2: 実行して確認
+```bash
+python hybrid_scraping_tool.py
+```
+- デバッグプリントで動作を追う
+- ログファイルで詳細を確認
+
+### ステップ3: 改造してみる
+- コメントを参考に値を変更
+- 新しいメソッドを追加
+- エラーを修正してみる
+
+---
+
+## 🔍 重要なポイント
+
+### デバッグプリント
+```python
+print("[DEBUG] 処理中...")  # 開発時の確認用
+```
+→ 実行中の状態を目で確認
+
+### ログ出力
+```python
+logger.info("処理完了")  # ファイルに記録
+```
+→ 後から動作を検証
+
+### 例外処理
+```python
+try:
+    # 処理
+except Exception as e:
+    print(f"エラー: {e}")  # エラーをキャッチ
+```
+→ プログラムが止まらないように
+
+---
+
+これで全てのコードに詳細な解説が入りました！どの部分でも理解できるようになっています😊
+
+わからないコードや概念があれば、具体的に聞いてください！
+
+
+# ============================================
+# ドライバー不要 HTML解析ツール
+# BeautifulSoup + requests でスクレイピング
+# Seleniumドライバー不要で軽量・高速
+# ============================================
+
+# --- 必要なモジュールをインポート ---
+import requests  # HTTP通信でHTMLを取得するライブラリ
+from bs4 import BeautifulSoup  # HTMLを解析するライブラリ（Beautiful Soup 4）
+import logging  # ログ出力用の標準ライブラリ
+from datetime import datetime  # 日時を取得・操作するための標準ライブラリ
+from typing import List, Dict, Optional  # 型ヒント用（コードの可読性向上）
+from urllib.parse import urljoin, urlparse  # URL処理用（相対URL→絶対URL変換等）
+import json  # JSON形式でデータを保存・読み込み
+import csv  # CSV形式でデータを保存・読み込み
+
+
+# ============================================
+# ログ設定
+# ============================================
+
+# ロギングの基本設定を行う（全体的な設定）
+logging.basicConfig(
+    level=logging.DEBUG,  # DEBUGレベル以上のログを出力（最も詳細なレベル）
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # ログのフォーマット定義
+    handlers=[  # ログの出力先を複数指定可能
+        logging.FileHandler('html_analysis.log', encoding='utf-8'),  # ファイルに保存（日本語対応）
+        logging.StreamHandler()  # コンソール（ターミナル）にも表示
+    ]
+)
+
+# このモジュール専用のロガーオブジェクトを作成
+logger = logging.getLogger(__name__)  # __name__は現在のモジュール名を自動取得
+
+
+# ============================================
+# HTML解析クラス
+# ============================================
+
+class HTMLAnalyzer:
+    """
+    ドライバー不要でHTMLを解析するクラス
+    requests + BeautifulSoup を使用して軽量・高速に動作
+    """
+    
+    def __init__(self):
+        """
+        クラスの初期化メソッド（コンストラクタ）
+        インスタンス作成時に自動で実行される特殊メソッド
+        """
+        # デバッグプリントで初期化開始を通知
+        print("[DEBUG] HTMLAnalyzerを初期化")
+        # ログファイルにも記録
+        logger.info("HTMLAnalyzer初期化")
+        
+        # リクエスト用のHTTPヘッダーを辞書で定義（ボット検出を回避）
+        self.headers = {
+            # User-Agent: ブラウザを偽装（通常のブラウザからのアクセスに見せかける）
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                         '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            # Accept: 受け入れ可能なコンテンツタイプを指定
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            # Accept-Language: 優先する言語を指定（日本語優先）
+            'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+            # Accept-Encoding: 受け入れ可能な圧縮形式を指定
+            'Accept-Encoding': 'gzip, deflate, br',
+            # Connection: 接続方式を指定
+            'Connection': 'keep-alive',
+        }
+        
+        # インスタンス変数を初期化（全てNoneから始める）
+        self.soup = None  # BeautifulSoupオブジェクト（HTMLパース後）
+        self.url = None  # 現在のURL
+        self.html = None  # 取得したHTML文字列
+    
+    def fetch_url(self, url: str, timeout: int = 10) -> bool:
+        """
+        URLからHTMLを取得
+        HTTP通信でWebページのHTMLを取得する
+        
+        Args:
+            url: 取得するURL（文字列）
+            timeout: タイムアウト時間（秒）応答がない場合の待機上限
+            
+        Returns:
+            成功時True、失敗時False（bool型）
+        """
+        # URLアクセス開始をデバッグプリント
+        print(f"\n[DEBUG] URLにアクセス: {url}")
+        # ログに記録
+        logger.info(f"URL取得開始: {url}")
+        
+        try:  # 例外処理のtryブロック開始
+            # requestsでHTTP GETリクエストを送信
+            response = requests.get(
+                url,  # 取得するURL
+                headers=self.headers,  # 設定したヘッダー
+                timeout=timeout  # タイムアウト時間
+            )
+            
+            # HTTPステータスコードをデバッグプリント
+            print(f"[DEBUG] ステータスコード: {response.status_code}")
+            # ログにも記録
+            logger.debug(f"ステータスコード: {response.status_code}")
+            
+            # ステータスコードをチェック（4xx,5xxならHTTPErrorを発生）
+            response.raise_for_status()
+            
+            # エンコーディング設定（文字化け対策）
+            if response.encoding == 'ISO-8859-1':  # デフォルトエンコーディングの場合
+                # 自動検出されたエンコーディングに変更
+                response.encoding = response.apparent_encoding
+            
+            # レスポンスからHTML文字列を取得してインスタンス変数に保存
+            self.html = response.text
+            # URLもインスタンス変数に保存
+            self.url = url
+            
+            # BeautifulSoupでHTMLをパース（解析）
+            self.soup = BeautifulSoup(self.html, 'html.parser')  # html.parserを使用
+            
+            # 取得成功をデバッグプリント
+            print(f"[DEBUG] ✅ HTML取得成功")
+            # HTML長を表示（カンマ区切りで読みやすく）
+            print(f"[DEBUG] HTML長: {len(self.html):,} 文字")
+            # エンコーディングを表示
+            print(f"[DEBUG] エンコーディング: {response.encoding}")
+            
+            # ログに成功を記録
+            logger.info(f"HTML取得成功: {len(self.html)}文字")
+            # エンコーディングもログに記録
+            logger.debug(f"エンコーディング: {response.encoding}")
+            
+            return True  # 成功を示すTrueを返す
+            
+        except requests.exceptions.Timeout:  # タイムアウトエラーをキャッチ
+            # エラーメッセージを表示
+            print(f"[DEBUG] ❌ タイムアウト: {timeout}秒以内に応答がありませんでした")
+            # ログにエラーを記録
+            logger.error(f"タイムアウト: {url}")
+            return False  # 失敗を示すFalseを返す
+            
+        except requests.exceptions.HTTPError as e:  # HTTPエラーをキャッチ
+            # エラーメッセージを表示
+            print(f"[DEBUG] ❌ HTTPエラー: {e}")
+            # ログにエラーを記録
+            logger.error(f"HTTPエラー: {e}")
+            return False  # 失敗を返す
+            
+        except requests.exceptions.RequestException as e:  # その他のリクエストエラー
+            # エラーメッセージを表示
+            print(f"[DEBUG] ❌ リクエストエラー: {e}")
+            # ログにエラーを記録（exc_info=Trueでトレースバックも記録）
+            logger.error(f"リクエストエラー: {e}", exc_info=True)
+            return False  # 失敗を返す
+    
+    def load_from_file(self, filepath: str) -> bool:
+        """
+        ローカルのHTMLファイルを読み込む
+        保存済みのHTMLファイルを解析する場合に使用
+        
+        Args:
+            filepath: HTMLファイルのパス（相対パスまたは絶対パス）
+            
+        Returns:
+            成功時True、失敗時False
+        """
+        # ファイル読み込み開始をデバッグプリント
+        print(f"\n[DEBUG] ファイルを読み込み: {filepath}")
+        # ログに記録
+        logger.info(f"ファイル読み込み: {filepath}")
+        
+        try:  # 例外処理のtryブロック開始
+            # ファイルを読み込みモードで開く（UTF-8エンコーディング）
+            with open(filepath, 'r', encoding='utf-8') as f:
+                # ファイル内容を全て読み込んでインスタンス変数に保存
+                self.html = f.read()
+            
+            # BeautifulSoupでHTMLをパース
+            self.soup = BeautifulSoup(self.html, 'html.parser')
+            # URLとしてファイルパスを保存（file://プロトコル）
+            self.url = f"file://{filepath}"
+            
+            # 読み込み成功をデバッグプリント
+            print(f"[DEBUG] ✅ ファイル読み込み成功")
+            # HTML長を表示
+            print(f"[DEBUG] HTML長: {len(self.html):,} 文字")
+            
+            # ログに成功を記録
+            logger.info(f"ファイル読み込み成功: {len(self.html)}文字")
+            
+            return True  # 成功を返す
+            
+        except FileNotFoundError:  # ファイルが見つからない場合
+            # エラーメッセージを表示
+            print(f"[DEBUG] ❌ ファイルが見つかりません: {filepath}")
+            # ログにエラーを記録
+            logger.error(f"ファイル未発見: {filepath}")
+            return False  # 失敗を返す
+            
+        except Exception as e:  # その他の例外
+            # エラーメッセージを表示
+            print(f"[DEBUG] ❌ ファイル読み込みエラー: {e}")
+            # ログにエラーを記録（トレースバック付き）
+            logger.error(f"ファイル読み込みエラー: {e}", exc_info=True)
+            return False  # 失敗を返す
+    
+    def get_page_info(self) -> Dict[str, any]:
+        """
+        ページの基本情報を取得
+        タイトル、メタ情報などを抽出
+        
+        Returns:
+            ページ情報の辞書
+        """
+        # soupが存在しない場合（HTML未読み込み）
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            # ログに警告を記録
+            logger.warning("HTML未読み込み")
+            return {}  # 空の辞書を返す
+        
+        # セクションヘッダーをデバッグプリント
+        print("\n[DEBUG] ========== ページ基本情報 ==========")
+        # ログに記録
+        logger.info("ページ情報取得開始")
+        
+        # タイトルタグを取得（存在しない場合は"(タイトルなし)"）
+        title = self.soup.title.string if self.soup.title else "(タイトルなし)"
+        
+        # メタ情報を格納する変数を初期化
+        description = ""  # description（ページの説明）
+        keywords = ""  # keywords（ページのキーワード）
+        
+        # descriptionメタタグを検索
+        meta_desc = self.soup.find('meta', attrs={'name': 'description'})
+        # メタタグが存在する場合
+        if meta_desc:
+            # content属性を取得（存在しない場合は空文字）
+            description = meta_desc.get('content', '')
+        
+        # keywordsメタタグを検索
+        meta_keywords = self.soup.find('meta', attrs={'name': 'keywords'})
+        # メタタグが存在する場合
+        if meta_keywords:
+            # content属性を取得
+            keywords = meta_keywords.get('content', '')
+        
+        # ページ情報を辞書にまとめる
+        info = {
+            'url': self.url,  # URL
+            'title': title,  # タイトル
+            'description': description,  # 説明
+            'keywords': keywords,  # キーワード
+            'html_length': len(self.html)  # HTML長
+        }
+        
+        # 情報をデバッグプリント
+        print(f"[DEBUG] URL: {info['url']}")
+        print(f"[DEBUG] タイトル: {info['title']}")
+        # descriptionは長い場合があるので最初の100文字のみ表示
+        print(f"[DEBUG] 説明: {info['description'][:100] if info['description'] else '(なし)'}...")
+        # keywordsも同様
+        print(f"[DEBUG] キーワード: {info['keywords'][:100] if info['keywords'] else '(なし)'}...")
+        # HTML長をカンマ区切りで表示
+        print(f"[DEBUG] HTML長: {info['html_length']:,} 文字")
+        
+        # ログに記録
+        logger.info(f"ページ情報: {title}")
+        logger.debug(f"HTML長: {info['html_length']}")
+        
+        # 情報の辞書を返す
+        return info
+    
+    def analyze_structure(self) -> Dict[str, int]:
+        """
+        HTML構造を分析（要素数をカウント）
+        各HTML要素がいくつ存在するかを調べる
+        
+        Returns:
+            要素数の辞書（キー=要素名、値=個数）
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return {}  # 空の辞書を返す
+        
+        # セクションヘッダーをデバッグプリント
+        print("\n[DEBUG] ========== HTML構造分析 ==========")
+        # ログに記録
+        logger.info("構造分析開始")
+        
+        # カウント対象の主要な要素をリストで定義
+        elements = [
+            'div', 'span', 'p', 'a', 'img', 'table', 'tr', 'td',  # 基本要素
+            'ul', 'ol', 'li',  # リスト要素
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',  # 見出し要素
+            'form', 'input', 'button', 'select', 'textarea',  # フォーム要素
+            'nav', 'header', 'footer', 'section', 'article', 'aside'  # HTML5セマンティック要素
+        ]
+        
+        # カウント結果を格納する辞書を初期化
+        counts = {}
+        
+        # カウント開始を通知
+        print("[DEBUG] 要素数をカウント中...")
+        
+        # 各要素についてループ処理
+        for element in elements:
+            # 要素を全て検索（find_all=全て見つける）
+            found = self.soup.find_all(element)
+            # 見つかった要素の数を取得
+            count = len(found)
+            # 辞書に要素名をキー、個数を値として保存
+            counts[element] = count
+            
+            # 1個以上存在する要素のみ表示
+            if count > 0:
+                # 要素名と個数をデバッグプリント
+                print(f"[DEBUG]   <{element}>: {count}個")
+                # ログにも記録
+                logger.debug(f"要素: <{element}> = {count}")
+        
+        # ログに完了を記録
+        logger.info(f"構造分析完了: {len(counts)}種類の要素")
+        
+        # カウント結果の辞書を返す
+        return counts
+    
+    def find_by_class(self, class_name: str) -> List:
+        """
+        クラス名で要素を検索
+        HTMLのclass属性で要素を検索
+        
+        Args:
+            class_name: 検索するクラス名（文字列）
+            
+        Returns:
+            見つかった要素のリスト
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return []  # 空リストを返す
+        
+        # 検索開始をデバッグプリント
+        print(f"\n[DEBUG] クラス名で検索: '{class_name}'")
+        # ログに記録
+        logger.info(f"クラス検索: {class_name}")
+        
+        # クラス名で要素を全て検索（class_=でclass属性を指定）
+        elements = self.soup.find_all(class_=class_name)
+        
+        # 検索結果をデバッグプリント
+        print(f"[DEBUG] ✅ {len(elements)}個の要素が見つかりました")
+        # ログに記録
+        logger.info(f"クラス検索結果: {len(elements)}個")
+        
+        # 最初の5個の要素情報を表示（ループ処理）
+        for i, element in enumerate(elements[:5], 1):  # enumerate=インデックス付きループ
+            # テキストを取得（strip=前後の空白削除、[:50]=最初の50文字）
+            text = element.get_text(strip=True)[:50]
+            # 要素のタグ名を取得
+            tag = element.name
+            # インデックス、タグ名、テキストを表示
+            print(f"[DEBUG]   [{i}] <{tag}> {text}...")
+            # ログにも記録（最初の30文字のみ）
+            logger.debug(f"要素[{i}]: <{tag}> {text[:30]}")
+        
+        # 5個より多い場合
+        if len(elements) > 5:
+            # 残りの個数を表示
+            print(f"[DEBUG]   ... 他 {len(elements) - 5}個")
+        
+        # 要素リストを返す
+        return elements
+    
+    def find_by_id(self, element_id: str):
+        """
+        IDで要素を検索
+        HTMLのid属性で要素を検索（IDは一意なので1つのみ）
+        
+        Args:
+            element_id: 検索する要素のID（文字列）
+            
+        Returns:
+            見つかった要素またはNone
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return None  # Noneを返す
+        
+        # 検索開始をデバッグプリント
+        print(f"\n[DEBUG] IDで検索: '{element_id}'")
+        # ログに記録
+        logger.info(f"ID検索: {element_id}")
+        
+        # IDで要素を検索（find=最初の1つのみ、id=でid属性を指定）
+        element = self.soup.find(id=element_id)
+        
+        # 要素が見つかった場合
+        if element:
+            # テキストを取得（最初の100文字のみ）
+            text = element.get_text(strip=True)[:100]
+            # タグ名を取得
+            tag = element.name
+            # 成功をデバッグプリント
+            print(f"[DEBUG] ✅ 要素が見つかりました")
+            # タグ名を表示
+            print(f"[DEBUG]   タグ: <{tag}>")
+            # テキストを表示
+            print(f"[DEBUG]   テキスト: {text}...")
+            # ログに成功を記録
+            logger.info(f"ID検索成功: {element_id}")
+        else:  # 要素が見つからなかった場合
+            # エラーメッセージを表示
+            print(f"[DEBUG] ❌ 要素が見つかりません")
+            # ログに警告を記録
+            logger.warning(f"ID検索失敗: {element_id}")
+        
+        # 要素を返す（見つからない場合はNone）
+        return element
+    
+    def find_by_tag(self, tag_name: str) -> List:
+        """
+        タグ名で要素を検索
+        特定のHTMLタグを全て検索
+        
+        Args:
+            tag_name: 検索するタグ名（例: 'div', 'p', 'a'）
+            
+        Returns:
+            見つかった要素のリスト
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return []  # 空リストを返す
+        
+        # 検索開始をデバッグプリント
+        print(f"\n[DEBUG] タグ名で検索: '<{tag_name}>'")
+        # ログに記録
+        logger.info(f"タグ検索: {tag_name}")
+        
+        # タグ名で要素を全て検索
+        elements = self.soup.find_all(tag_name)
+        
+        # 検索結果をデバッグプリント
+        print(f"[DEBUG] ✅ {len(elements)}個の要素が見つかりました")
+        # ログに記録
+        logger.info(f"タグ検索結果: {len(elements)}個")
+        
+        # 要素リストを返す
+        return elements
+    
+    def find_by_css_selector(self, selector: str) -> List:
+        """
+        CSSセレクタで要素を検索
+        複雑な検索条件でも対応可能（最も柔軟な検索方法）
+        
+        Args:
+            selector: CSSセレクタ（例: 'div.class', '#id', 'div > p'）
+            
+        Returns:
+            見つかった要素のリスト
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return []  # 空リストを返す
+        
+        # 検索開始をデバッグプリント
+        print(f"\n[DEBUG] CSSセレクタで検索: '{selector}'")
+        # ログに記録
+        logger.info(f"CSS検索: {selector}")
+        
+        # CSSセレクタで要素を検索（select=CSSセレクタ使用）
+        elements = self.soup.select(selector)
+        
+        # 検索結果をデバッグプリント
+        print(f"[DEBUG] ✅ {len(elements)}個の要素が見つかりました")
+        # ログに記録
+        logger.info(f"CSS検索結果: {len(elements)}個")
+        
+        # 最初の5個の要素情報を表示
+        for i, element in enumerate(elements[:5], 1):
+            # テキストを取得（最初の50文字のみ）
+            text = element.get_text(strip=True)[:50]
+            # タグ名を取得
+            tag = element.name
+            # インデックス、タグ、テキストを表示
+            print(f"[DEBUG]   [{i}] <{tag}> {text}...")
+            # ログにも記録（最初の30文字のみ）
+            logger.debug(f"要素[{i}]: <{tag}> {text[:30]}")
+        
+        # 5個より多い場合
+        if len(elements) > 5:
+            # 残りの個数を表示
+            print(f"[DEBUG]   ... 他 {len(elements) - 5}個")
+        
+        # 要素リストを返す
+        return elements
+    
+    def get_all_links(self) -> List[Dict[str, str]]:
+        """
+        すべてのリンクを取得
+        ページ内の<a>タグを全て抽出
+        
+        Returns:
+            リンク情報のリスト（辞書のリスト）
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return []  # 空リストを返す
+        
+        # セクションヘッダーをデバッグプリント
+        print("\n[DEBUG] ========== リンク一覧 ==========")
+        # ログに記録
+        logger.info("リンク取得開始")
+        
+        # すべての<a>タグを検索
+        links = self.soup.find_all('a')
+        
+        # リンク情報を格納するリストを初期化
+        link_data = []
+        
+        # 見つかったリンク数を表示
+        print(f"[DEBUG] {len(links)}個のリンクが見つかりました")
+        # ログに記録
+        logger.info(f"リンク数: {len(links)}")
+        
+        # 各リンクの情報を取得（最初の10個のみ処理）
+        for i, link in enumerate(links[:10], 1):
+            # href属性を取得（存在しない場合は空文字）
+            href = link.get('href', '')
+            # リンクテキストを取得（前後の空白削除）
+            text = link.get_text(strip=True)
+            
+            # hrefが存在する場合のみ処理
+            if href:
+                # 相対URLを絶対URLに変換（urljoin使用）
+                absolute_url = urljoin(self.url, href) if self.url else href
+                
+                # リンク情報を辞書にまとめる
+                link_info = {
+                    'href': absolute_url,  # 絶対URL
+                    'text': text if text else '(テキストなし)',  # リンクテキスト
+                    'original_href': href  # 元のhref（相対URLの場合もある）
+                }
+                # リストに追加
+                link_data.append(link_info)
+                
+                # リンク情報をデバッグプリント（最初の40文字のみ）
+                print(f"[DEBUG]   [{i}] {link_info['text'][:40]}")
+                # URLを表示
+                print(f"[DEBUG]       → {absolute_url}")
+                # ログに記録（最初の30文字のみ）
+                logger.debug(f"リンク[{i}]: {text[:30]} -> {href}")
+        
+        # 10個より多い場合
+        if len(links) > 10:
+            # 残りの個数を表示
+            print(f"[DEBUG]   ... 他 {len(links) - 10}個")
+        
+        # ログに完了を記録
+        logger.info(f"リンク取得完了: {len(link_data)}個")
+        
+        # リンク情報リストを返す
+        return link_data
+    
+    def get_all_images(self) -> List[Dict[str, str]]:
+        """
+        すべての画像を取得
+        ページ内の<img>タグを全て抽出
+        
+        Returns:
+            画像情報のリスト（辞書のリスト）
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return []  # 空リストを返す
+        
+        # セクションヘッダーをデバッグプリント
+        print("\n[DEBUG] ========== 画像一覧 ==========")
+        # ログに記録
+        logger.info("画像取得開始")
+        
+        # すべての<img>タグを検索
+        images = self.soup.find_all('img')
+        
+        # 画像情報を格納するリストを初期化
+        image_data = []
+        
+        # 見つかった画像数を表示
+        print(f"[DEBUG] {len(images)}個の画像が見つかりました")
+        # ログに記録
+        logger.info(f"画像数: {len(images)}")
+        
+        # 各画像の情報を取得（最初の10個のみ処理）
+        for i, img in enumerate(images[:10], 1):
+            # src属性を取得（画像のURL）
+            src = img.get('src', '')
+            # alt属性を取得（画像の説明）
+            alt = img.get('alt', '')
+            
+            # srcが存在する場合のみ処理
+            if src:
+                # 相対URLを絶対URLに変換
+                absolute_url = urljoin(self.url, src) if self.url else src
+                
+                # 画像情報を辞書にまとめる
+                img_info = {
+                    'src': absolute_url,  # 絶対URL
+                    'alt': alt if alt else '(altなし)',  # alt属性
+                    'original_src': src  # 元のsrc
+                }
+                # リストに追加
+                image_data.append(img_info)
+                
+                # 画像情報をデバッグプリント（最初の40文字のみ）
+                print(f"[DEBUG]   [{i}] alt='{img_info['alt'][:40]}'")
+                # srcを表示（最初の60文字のみ）
+                print(f"[DEBUG]       src: {absolute_url[:60]}...")
+                # ログに記録（最初の50文字のみ）
+                logger.debug(f"画像[{i}]: alt={alt} -> {src[:50]}")
+        
+        # 10個より多い場合
+        if len(images) > 10:
+            # 残りの個数を表示
+            print(f"[DEBUG]   ... 他 {len(images) - 10}個")
+        
+        # ログに完了を記録
+        logger.info(f"画像取得完了: {len(image_data)}個")
+        
+        # 画像情報リストを返す
+        return image_data
+    
+    def save_html(self, filename: Optional[str] = None):
+        """
+        HTMLをファイルに保存
+        取得したHTMLをローカルファイルに保存
+        
+        Args:
+            filename: 保存するファイル名（Noneの場合は自動生成）
+        """
+        # HTMLが存在しない場合
+        if not self.html:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return  # 処理を終了
+        
+        # ファイル名が指定されていない場合
+        if not filename:
+            # 現在日時からタイムスタンプを生成
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            # ファイル名を自動生成
+            filename = f'saved_html_{timestamp}.html'
+        
+        # 保存開始をデバッグプリント
+        print(f"\n[DEBUG] HTMLをファイルに保存: {filename}")
+        # ログに記録
+        logger.info(f"HTML保存: {filename}")
+        
+        try:  # 例外処理のtryブロック開始
+            # ファイルを書き込みモードで開く（UTF-8エンコーディング）
+            with open(filename, 'w', encoding='utf-8') as f:
+                # HTML文字列を書き込む
+                f.write(self.html)
+            
+            # 保存成功をデバッグプリント（カンマ区切りで文字数表示）
+            print(f"[DEBUG] ✅ 保存成功: {len(self.html):,} 文字")
+            # ログに成功を記録
+            logger.info(f"HTML保存完了: {len(self.html)}文字")
+            
+        except Exception as e:  # エラーが発生した場合
+            # エラーメッセージを表示
+            print(f"[DEBUG] ❌ 保存エラー: {e}")
+            # ログにエラーを記録
+            logger.error(f"HTML保存エラー: {e}")
+    
+    def extract_text(self) -> str:
+        """
+        HTMLからテキストのみを抽出
+        HTMLタグを除去してテキストのみを取得
+        
+        Returns:
+            テキスト文字列
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return ""  # 空文字列を返す
+        
+        # 抽出開始をデバッグプリント
+        print("\n[DEBUG] テキストを抽出中...")
+        # ログに記録
+        logger.info("テキスト抽出開始")
+        
+        # テキストのみを取得（separator=改行で区切る、strip=空白削除）
+        text = self.soup.get_text(separator='\n', strip=True)
+        
+        # 抽出完了をデバッグプリント（カンマ区切りで文字数表示）
+        print(f"[DEBUG] ✅ テキスト抽出完了: {len(text):,} 文字")
+        # ログに完了を記録
+        logger.info(f"テキスト抽出完了: {len(text)}文字")
+        
+        # テキスト文字列を返す
+        return text
+    
+    def pretty_print(self):
+        """
+        HTMLを整形して表示
+        インデントを付けて読みやすく整形
+        """
+        # soupが存在しない場合
+        if not self.soup:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ HTMLが読み込まれていません")
+            return  # 処理を終了
+        
+        # セクションヘッダーをデバッグプリント
+        print("\n[DEBUG] ========== 整形HTML ==========")
+        
+        # prettify()で整形（インデント付きHTML）
+        pretty_html = self.soup.prettify()
+        
+        # 最初の50行のみ表示（改行で分割してスライス）
+        lines = pretty_html.split('\n')[:50]
+        # 改行で結合して表示
+        print('\n'.join(lines))
+        
+        # 50行より多い場合
+        if len(pretty_html.split('\n')) > 50:
+            # 残りの行数を表示
+            print(f"\n... 他 {len(pretty_html.split('\n')) - 50}行")
+
+
+# ============================================
+# メイン実行部分
+# ============================================
+
+def main():
+    """
+    メイン関数
+    プログラムのエントリーポイント
+    """
+    # タイトル表示
+    print("=" * 70)
+    print("🔍 ドライバー不要 HTML解析ツール")
+    print("=" * 70)
+    # ログに開始を記録
+    logger.info("プログラム開始")
+    
+    # HTMLAnalyzerのインスタンスを作成
+    analyzer = HTMLAnalyzer()
+    
+    # メニュー表示
+    print("\n解析方法を選択:")
+    print("1. URLから取得")
+    print("2. ローカルファイルから読み込み")
+    
+    # ユーザーの選択を取得
+    choice = input("\n選択 (1-2): ")
+    
+    try:  # 例外処理のtryブロック開始
+        # 選択1の場合（URLから取得）
+        if choice == "1":
+            # URLを入力
+            url = input("URL: ")
+            # URLからHTML取得を試みる
+            if not analyzer.fetch_url(url):
+                # 失敗した場合はエラーメッセージを表示
+                print("[DEBUG] ❌ HTML取得に失敗しました")
+                return  # 処理を終了
+        
+        # 選択2の場合（ファイルから読み込み）
+        elif choice == "2":
+            # ファイルパスを入力
+            filepath = input("HTMLファイルのパス: ")
+            # ファイルから読み込みを試みる
+            if not analyzer.load_from_file(filepath):
+                # 失敗した場合はエラーメッセージを表示
+                print("[DEBUG] ❌ ファイル読み込みに失敗しました")
+                return  # 処理を終了
+        
+        # それ以外の選択の場合
+        else:
+            # エラーメッセージを表示
+            print("[DEBUG] ❌ 無効な選択です")
+            return  # 処理を終了
+        
+        # --- ここから自動分析開始 ---
+        
+        # ページ情報を取得して表示
+        page_info = analyzer.get_page_info()
+        
+        # HTML構造を分析して表示
+        structure = analyzer.analyze_structure()
+        
+        # リンク一覧を取得して表示
+        links = analyzer.get_all_links()
+        
+        # 画像一覧を取得して表示
+        images = analyzer.get_all_images()
+        
+        # HTMLをファイルに保存
+        analyzer.save_html()
+        
+        # --- インタラクティブモード開始 ---
+        
+        # セクションヘッダー表示
+        print("\n" + "=" * 70)
+        print("📋 インタラクティブモード")
+        print("=" * 70)
+        # コマンド一覧を表示
+        print("コマンド:")
+        print("  class <クラス名>  - クラスで検索")
+        print("  id <ID>          - IDで検索")
+        print("  tag <タグ名>      - タグで検索")
+        print("  css <セレクタ>    - CSSセレクタで検索")
+        print("  text             - テキストを抽出")
+        print("  quit             - 終了")
+        
+        # 無限ループでコマンド入力を待つ
+        while True:
+            # コマンド入力（前後の空白を削除）
+            command = input("\n> ").strip()
+            
+            # quitコマンドの場合
+            if command == "quit":
+                # ループを抜ける
+                break
+            
+            # classコマンドの場合
+            elif command.startswith("class "):
+                # "class "以降をクラス名として取得
+                class_name = command[6:].strip()
+                # クラス名で検索
+                analyzer.find_by_class(class_name)
+            
+            # idコマンドの場合
+            elif command.startswith("id "):
+                # "id "以降をIDとして取得
+                element_id = command[3:].strip()
+                # IDで検索
+                analyzer.find_by_id(element_id)
+            
+            # tagコマンドの場合
+            elif command.startswith("tag "):
+                # "tag "以降をタグ名として取得
+                tag_name = command[4:].strip()
+                # タグ名で検索
+                results = analyzer.find_by_tag(tag_name)
+                # 結果数を表示
+                print(f"[DEBUG] {len(results)}個見つかりました")
+            
+            # cssコマンドの場合
+            elif command.startswith("css "):
+                # "css "以降をセレクタとして取得
+                selector = command[4:].strip()
+                # CSSセレクタで検索
+                analyzer.find_by_css_selector(selector)
+            
+            # textコマンドの場合
+            elif command == "text":
+                # テキストを抽出
+                text = analyzer.extract_text()
+                # 最初の500文字のみ表示
+                print(f"\n{text[:500]}...")
+            
+            # 不明なコマンドの場合
+            else:
+                # エラーメッセージを表示
+                print("[DEBUG] 不明なコマンド")
+        
+        # 終了メッセージ
+        print("\n" + "=" * 70)
+        print("✅ 解析完了")
+        print("=" * 70)
+        # ログに終了を記録
+        logger.info("プログラム終了")
+    
+    except KeyboardInterrupt:  # Ctrl+Cが押された場合
+        # 中断メッセージを表示
+        print("\n\n[DEBUG] 中断されました")
+        # ログに記録
+        logger.info("ユーザー中断")
+    
+    except Exception as e:  # その他の例外
+        # エラーメッセージを表示
+        print(f"\n[DEBUG] ❌ エラー: {e}")
+        # ログにエラーを記録（トレースバック付き）
+        logger.error(f"エラー: {e}", exc_info=True)
+
+
+# ============================================
+# プログラムのエントリーポイント
+# ============================================
+
+# このスクリプトが直接実行された場合のみmain()を実行
+if __name__ == "__main__":  # __name__が"__main__"の場合（直接実行時）
+    # メイン関数を呼び出す
+    main()
